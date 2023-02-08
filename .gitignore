@@ -3,8 +3,8 @@ model/
 *.out
 *.env
 AnyBURL/path1/
-data/*2id.txt
-data/in*
-data/out*
-data/*.dict
-data/*_triples.txt
+data/*/*2id.txt
+data/*/in*
+data/*/out*
+data/*/*.dict
+data/*/*_triples.txt
