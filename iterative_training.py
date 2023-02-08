@@ -1,16 +1,10 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch import optim
 from torch.utils.data import DataLoader
-from dataset import Seq2SeqDataset, TestDataset
-from model import TransformerModel
-import argparse
+from dataset import TestDataset
 import numpy as np
 import os
 from tqdm import tqdm
-import logging
-import transformers
 import random
 import networkx as nx
 

@@ -5,8 +5,6 @@
 
 import os
 from collections import Counter
-from multiprocessing import Pool
-
 import torch
 import re
 
