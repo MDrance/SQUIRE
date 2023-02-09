@@ -18,9 +18,9 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def read_triple(file_path, entity2id, relation2id):
+def read_triple(file_path: str, entity2id: dict, relation2id: dict)-> list:
     '''
-    Read triples and map them into ids.
+    Read triples and map them into ids in the form of mapped triples [(18, 4, 19), (69, 5, 420)]
     '''
     triples = []
     with open(file_path) as fin:
@@ -29,7 +29,16 @@ def read_triple(file_path, entity2id, relation2id):
             triples.append((entity2id[h], relation2id[r], entity2id[t]))
     return triples
 
-def read_mapping(file_path, entities, relations):
+def read_mapping(file_path: str, entities: dict, relations: dict) -> None:
+    """
+    Read a file containing train, val or test triple in textual form.
+    Update the dicts by listing each unique node and relation (could have used a set?)
+
+    Parameters
+    ----------
+    entities, relations : dict
+        Dict acting as set to track unique nodes and relations.
+    """
     with open(file_path) as fin:
         for line in fin:
             h, r, t = line.strip().split('\t')
@@ -41,6 +50,9 @@ def read_mapping(file_path, entities, relations):
                 relations[r] = 1
 
 def gen_mapping(args):
+    """
+    Read the dict of unique nodes and relation create by read_mapping() and create the two vocabs
+    """
     print("-------generating mapping files-------")
     entities = {}
     relations = {}
@@ -63,7 +75,21 @@ def gen_mapping(args):
         f.writelines(rel_lines)
     print("-------finish mapping files-------")
 
-def gen_eval(train_triples, valid_triples, test_triples, relation2id):
+def gen_eval(train_triples: list, valid_triples: list, test_triples: list, relation2id: dict):
+    """
+    Generate the train, val and test file with mapped triple and their inverses.
+    R symbol is added to relation ID.
+    Inverse relation are modeled by r_id+nbr_rel
+    train_triples, val_triples and test triples contain mapped triples.
+    Inverse files contain base triples + inverse.
+
+    Parameters
+    ----------
+    X_triples : list
+        triples in form of mapped triples [(), (),...]
+    relation2id : dict
+        mapping of relation to their ID
+    """
     print("-------generating evaluation files-------")
     rel_num = len(relation2id)
     # valid and test file
@@ -101,7 +127,22 @@ def gen_eval(train_triples, valid_triples, test_triples, relation2id):
         f.writelines(train_line+train_line_rev)
     print("-------finish evaluation files-------")
 
-def gen_path_from_rule(adjacent, rel2rules, triple, num):
+def gen_path_from_rule(adjacent: dict, rel2rules: dict, triple: list, num: int):
+    """
+    Generate paths between h and t using the mined rules. 
+    Return a list with 6 possible paths from h to t.
+
+    Parameters
+    ----------
+    adjacent : dict
+        keep track of nodes linked to h by a relation
+            {start: {edge1: [end11, end12, ...]}, edge2: [end21, end22, ...], ...}, ...}
+    rel2rules : dict
+        mapping of head relation and body relations and confidence
+            {18 : [[0.51, [45, 56, 23]], [0.27, [89, 25, 01]]], 95 : [[0.36, [82, 51, 23]], 0.66, [78, 10, 09]]]}
+    triple : list
+        Mapped triples
+    """
     total = 0
     start = triple[0]
     end = triple[2]
@@ -133,17 +174,15 @@ def gen_path_from_rule(adjacent, rel2rules, triple, num):
                     elif suc == end:
                         paths.append(candidate_path + [edge, suc])
         if len(paths) > 0:
-            #print(sample(paths, 1)[0], meta_rule)
             rule_paths.append(sample(paths, 1)[0])
             total += 1
             if total == num:
                 break
     return total, rule_paths
 
-def sample_path(len2paths, num):
+def sample_path(len2paths: list, num: int):
     sample_paths = []
     N = 0
-    #print(len2paths)
     for paths in len2paths:
         if len(paths) > 0:
             N += 1
@@ -189,16 +228,27 @@ def write_path(start, edge, paths, in_line, out_line, rel_num, rev):
         out_line.append(line)
 
 def gen_train(train_triples, relation2id, args):
+    """
+    Generate in_ and out_ files.
+    in_file correspond to the request (h, r)
+    out_file correspond to the n possible paths from h to t that implies r
+
+    Parameters
+    ----------
+    train_triples : list
+        triples in form of mapped triples [(), (),...]
+    relation2id : dict
+        mapping between rel and their ID
+    """
     print("-------generating training files-------")
     rel_num = len(relation2id)
     all_true_triples = train_triples
     all_reverse_triples = []
-    connected = dict() # {start: {end1: [edge11, edge12, ...], end2: [edge21, edge22, ...], ...}, ...}
-    adjacent = dict() # {start: {edge1: [end11, end12, ...]}, edge2: [end21, end22, ...], ...}, ...}
+    connected = dict() # {start: {end1: [edge11, edge12, ...], end2: [edge21, edge22, ...], ...}, ...}, keep track of relation between to nodes
+    adjacent = dict() # {start: {edge1: [end11, end12, ...]}, edge2: [end21, end22, ...], ...}, ...}, keep track of nodes linked to h by a relation
     for triple in all_true_triples:
         all_reverse_triples.append((triple[2], triple[1] + rel_num, triple[0]))
     all_triples = all_reverse_triples + all_true_triples
-    # all_triples = all_true_triples
     for triple in all_triples:
         start = triple[0]
         end = triple[2]
@@ -225,16 +275,12 @@ def gen_train(train_triples, relation2id, args):
         end = triple[2]
         edge = triple[1]
         paths = list()
-        # if len(connected[start]) > len(connected[end]):
-        #     (start, end) = (end, start)
-        #     edge += rel_num
-        #     triple = (start, edge, end)
         if args.rule:
             adjacent[start][edge].remove(end)
             num, paths = gen_path_from_rule(adjacent, rel2rules, triple, args.num)
             adjacent[start][edge].append(end)
         num = args.num - num
-        # find all paths of max_len in remaining graph
+        # find all paths of max_len in remaining graph if not enough paths were found using mined rules
         if num > 0:
             connected[start][end].remove(edge)
             # len2paths = search_path(connected, start, end, args.max_len)
@@ -254,7 +300,6 @@ def gen_train(train_triples, relation2id, args):
                 for n in range(num):
                     in_line.append(str(end)+' '+'R'+str(edge+rel_num)+'\n')
                     out_line.append('R'+str(edge+rel_num)+' '+str(start)+'\n')
-            # print(num)
             paths1 = paths + sample_path(len2paths, num)
             paths2 = paths + sample_path(len2paths, num)
         else:
@@ -263,7 +308,6 @@ def gen_train(train_triples, relation2id, args):
         #print(paths1)
         write_path(start, edge, paths1, in_line, out_line, rel_num, rev=False)
         write_path(end, edge, paths2, in_line, out_line, rel_num, rev=True)
-        #print(num, triple, out_line[-12:-6], out_line[-6:])
 
     with open(os.path.join(args.dataset, 'in_'+args.out+'.txt'), 'w') as f:
         f.writelines(in_line)

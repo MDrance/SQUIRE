@@ -8,3 +8,4 @@ data/*/in*
 data/*/out*
 data/*/*.dict
 data/*/*_triples*.txt
+test.py

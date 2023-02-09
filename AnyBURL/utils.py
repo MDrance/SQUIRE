@@ -11,7 +11,14 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def filter_rule(path, thrshd_num, thrshd_ratio):
+def filter_rule(path: str, thrshd_num: int, thrshd_ratio: float) -> None:
+    """
+    Take as an input the path_1000 file corresponding to the logical rules mined by AnyBURL.
+    If a rule has a generic head r(X,Y), good confidence and is used to predict lot of facts:
+    Create rel2rules, mapping relation belonging to the head of the rule with the relations used in the body + confidence score
+    {18 : [[0.51, [45, 56, 23]], [0.27, [89, 25, 01]]], 95 : [[0.36, [82, 51, 23]], 0.66, [78, 10, 09]]]}
+    Save it in rules.dict
+    """
     rel2paths = dict()
     rel2scores = dict()
     rel2rules = dict()
