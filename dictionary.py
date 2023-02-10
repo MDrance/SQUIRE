@@ -32,8 +32,11 @@ class Dictionary(object):
         extra_special_symbols=None,
     ):
         self.bos_word, self.unk_word, self.pad_word, self.eos_word, self.sep = bos, unk, pad, eos, sep
+        #List of all unique symbols
         self.symbols = []
+        #List keeping count of every symbol [8, 2, 1] -> symbol 1 appeared 2 times
         self.count = []
+        #dict {symbol0 : 0, symbol1 : 1, ...}
         self.indices = {}
         self.bos_index = self.add_symbol(bos)
         self.pad_index = self.add_symbol(pad)

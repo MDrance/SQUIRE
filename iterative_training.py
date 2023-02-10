@@ -115,7 +115,6 @@ class Iter_trainer(object):
                 relation2id[r] = int(rid)
         
         self.rel_num = len(relation2id)
-        G = nx.DiGraph()
         train_triples = self.read_triple(os.path.join(self.dataset, 'train.txt'), entity2id, relation2id)
         valid_triples = self.read_triple(os.path.join(self.dataset, 'valid.txt'), entity2id, relation2id)
         test_triples = self.read_triple(os.path.join(self.dataset, 'test.txt'), entity2id, relation2id)

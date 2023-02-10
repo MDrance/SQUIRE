@@ -9,7 +9,9 @@ import random
 class Seq2SeqDataset(Dataset):
     def __init__(self, data_path="FB15K237/", vocab_file="FB15K237/vocab.txt", device="cpu", args=None):
         self.data_path = data_path
+        #source file containing requests h, r
         self.src_file = os.path.join(data_path, "in_"+args.trainset+".txt")
+        #Target file containing path for each request
         if args.loop:
             self.tgt_file = os.path.join(data_path, "out_"+args.trainset+"_loop.txt")
         else:
@@ -28,7 +30,7 @@ class Seq2SeqDataset(Dataset):
         except FileNotFoundError:
             self.dictionary = Dictionary()
             self._init_vocab()
-        self.padding_idx = self.dictionary.pad()
+        self.padding_idx = self.dictionary.pad()    #Get index of the pading token
         self.len_vocab = len(self.dictionary)
         self.smart_filter = args.smart_filter
         self.args = args
