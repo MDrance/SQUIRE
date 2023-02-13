@@ -234,6 +234,7 @@ def evaluate(model, dataloader, device, args, true_triples=None, valid_triples=N
     return hit/count, hit1/count, hit3/count, hit10/count
 
 def train(args):
+    # accelerator = Accelerator()
     args.dataset = os.path.join('data', args.dataset)
     save_path = os.path.join('models_new', args.save_dir)
     ckpt_path = os.path.join(save_path, 'checkpoint')
@@ -249,6 +250,10 @@ def train(args):
                     )
     logging.info(args)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    #Move branch before trying to use Accelerate,
+    #See https://huggingface.co/docs/accelerate/basic_tutorials/launch to lauch the code with the config file
+    #device = accelerator.device if torch.cuda.is_available() else "cpu"
+    #See https://huggingface.co/docs/accelerate/basic_tutorials/migration to handle device for data and model
     train_set = Seq2SeqDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, args=args)
     valid_set = TestDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, src_file="valid_triples.txt")
     test_set = TestDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, src_file="test_triples.txt")
@@ -304,12 +309,14 @@ def train(args):
                     warmup_steps = 0
                 scheduler = transformers.get_linear_schedule_with_warmup(optimizer, warmup_steps, step_num)
             curr_iter_epoch -= 1
+        # model, otpimizer, train_loader, scheduler = accelerator.prepare(model, optimizer, train_loader, scheduler)
         model.train()
         with tqdm(train_loader, desc="training") as pbar:
             losses = []
             for samples in pbar:
                 optimizer.zero_grad()
                 loss = model.get_loss(**samples)
+                #accelerator.backward()
                 loss.backward()
                 optimizer.step()
                 scheduler.step()
