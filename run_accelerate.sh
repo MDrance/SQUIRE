@@ -10,3 +10,4 @@ cmd="CUDA_VISIBLE_DEVICES=2,3 accelerate launch --config_file accelerate_config.
 
 
 echo "Executing $cmd"
+$cmd
