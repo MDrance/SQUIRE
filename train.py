@@ -262,7 +262,7 @@ def train(args):
     valid_loader = DataLoader(valid_set, batch_size=args.test_batch_size, collate_fn=test_set.collate_fn, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=args.test_batch_size, collate_fn=test_set.collate_fn, shuffle=True)
     
-    # model = TransformerModel(args, train_set.dictionary).to(device)
+    model = TransformerModel(args, train_set.dictionary)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     steps = len(train_loader)
     total_step_num = len(train_loader) * args.num_epoch
