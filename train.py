@@ -12,6 +12,7 @@ import logging
 import transformers
 from iterative_training import Iter_trainer
 import math
+from accelerate import Accelerator
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -234,7 +235,7 @@ def evaluate(model, dataloader, device, args, true_triples=None, valid_triples=N
     return hit/count, hit1/count, hit3/count, hit10/count
 
 def train(args):
-    # accelerator = Accelerator()
+    accelerator = Accelerator()
     args.dataset = os.path.join('data', args.dataset)
     save_path = os.path.join('models_new', args.save_dir)
     ckpt_path = os.path.join(save_path, 'checkpoint')
@@ -249,20 +250,19 @@ def train(args):
                     '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s'
                     )
     logging.info(args)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    #Move branch before trying to use Accelerate,
     #See https://huggingface.co/docs/accelerate/basic_tutorials/launch to lauch the code with the config file
-    #device = accelerator.device if torch.cuda.is_available() else "cpu"
     #See https://huggingface.co/docs/accelerate/basic_tutorials/migration to handle device for data and model
-    train_set = Seq2SeqDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, args=args)
-    valid_set = TestDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, src_file="valid_triples.txt")
-    test_set = TestDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, src_file="test_triples.txt")
+    device = accelerator.device if torch.cuda.is_available() else "cpu"
+
+    train_set = Seq2SeqDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", args=args)
+    valid_set = TestDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", src_file="valid_triples.txt")
+    test_set = TestDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", src_file="test_triples.txt")
     train_valid, eval_valid = train_set.get_next_valid()
     train_loader = DataLoader(train_set, batch_size=args.batch_size, collate_fn=train_set.collate_fn, shuffle=True)
     valid_loader = DataLoader(valid_set, batch_size=args.test_batch_size, collate_fn=test_set.collate_fn, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=args.test_batch_size, collate_fn=test_set.collate_fn, shuffle=True)
     
-    model = TransformerModel(args, train_set.dictionary).to(device)
+    # model = TransformerModel(args, train_set.dictionary).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     steps = len(train_loader)
     total_step_num = len(train_loader) * args.num_epoch
@@ -309,15 +309,17 @@ def train(args):
                     warmup_steps = 0
                 scheduler = transformers.get_linear_schedule_with_warmup(optimizer, warmup_steps, step_num)
             curr_iter_epoch -= 1
-        # model, otpimizer, train_loader, scheduler = accelerator.prepare(model, optimizer, train_loader, scheduler)
+
+        model, optimizer, train_loader, scheduler = accelerator.prepare(model, optimizer, train_loader, scheduler)
+
         model.train()
         with tqdm(train_loader, desc="training") as pbar:
             losses = []
             for samples in pbar:
                 optimizer.zero_grad()
                 loss = model.get_loss(**samples)
-                #accelerator.backward()
-                loss.backward()
+                accelerator.backward()
+                # loss.backward()
                 optimizer.step()
                 scheduler.step()
                 steps += 1
