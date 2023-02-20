@@ -288,6 +288,7 @@ def train(args):
                     "[Iter0: %d] [Iter1: %d] [Iter2: %d]"
                     % (iter_epoch[0], iter_epoch[1], iter_epoch[2])
                     )
+    model, optimizer, train_loader, scheduler = accelerator.prepare(model, optimizer, train_loader, scheduler)
     steps = 0
     for epoch in range(args.num_epoch):
         if args.iter:
@@ -309,8 +310,6 @@ def train(args):
                     warmup_steps = 0
                 scheduler = transformers.get_linear_schedule_with_warmup(optimizer, warmup_steps, step_num)
             curr_iter_epoch -= 1
-
-        model, optimizer, train_loader, scheduler = accelerator.prepare(model, optimizer, train_loader, scheduler)
 
         model.train()
         with tqdm(train_loader, desc="training") as pbar:
