@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import DataLoader
 from dataset import Seq2SeqDataset, TestDataset
-from model import TransformerModel
+from model import TransformerModel, acc_loss
 import argparse
 import numpy as np
 import os
@@ -317,7 +317,8 @@ def train(args):
             losses = []
             for samples in pbar:
                 optimizer.zero_grad()
-                loss = model.get_loss(**samples)
+                loss = acc_loss(model, **samples)
+                # loss = model.get_loss(**samples)
                 accelerator.backward()
                 # loss.backward()
                 optimizer.step()
