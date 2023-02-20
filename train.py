@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import DataLoader
 from dataset import Seq2SeqDataset, TestDataset
-from model import TransformerModel, acc_loss
+from model import TransformerModel
 import argparse
 import numpy as np
 import os
