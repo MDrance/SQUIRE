@@ -155,15 +155,3 @@ class TransformerModel(nn.Module):
             + (1 - self.label_smooth) / (self.ntoken - 1) * lprobs.sum(dim=-1)) * mask
         loss = loss.sum() / mask.sum()
         return loss
-
-def acc_loss(model, source, prev_outputs, target, mask, **unused):
-    device = source.device
-    bsz = prev_outputs.size(0)
-    seq_len = prev_outputs.size(1)
-    logits = model.logits(source, prev_outputs)
-    # label-smoothing
-    lprobs = F.log_softmax(logits, dim=-1)
-    loss = -(model.label_smooth * torch.gather(input=lprobs, dim=-1, index=target.unsqueeze(-1)).squeeze() \
-        + (1 - model.label_smooth) / (model.ntoken - 1) * lprobs.sum(dim=-1)) * mask
-    loss = loss.sum() / mask.sum()
-    return loss
