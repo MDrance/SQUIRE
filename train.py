@@ -318,7 +318,7 @@ def train(args):
             for samples in pbar:
                 optimizer.zero_grad()
                 loss = model.module.get_loss(**samples)
-                accelerator.backward()
+                accelerator.backward(loss)
                 # loss.backward()
                 optimizer.step()
                 scheduler.step()
