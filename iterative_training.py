@@ -150,16 +150,16 @@ class Iter_trainer(object):
         train_loader = DataLoader(train_set, batch_size=self.batch_size, collate_fn=train_set.collate_fn, shuffle=True)
         beam_size = self.beam_size
         model.eval()
-        vocab_size = len(model.dictionary)
-        eos = model.dictionary.eos()
-        bos = model.dictionary.bos()
+        vocab_size = len(model.module.dictionary)
+        eos = model.module.dictionary.eos()
+        bos = model.module.dictionary.bos()
         # one-hop
         max_len = 2 * it + 1
         nsample = 6
         connected = self.create_graph()
         rev_dict = dict()
-        for name in model.dictionary.indices.keys():
-            index = model.dictionary.indices[name]
+        for name in model.module.dictionary.indices.keys():
+            index = model.module.dictionary.indices[name]
             rev_dict[index] = name
 
         with tqdm(train_loader, desc="iterating") as pbar:
@@ -174,8 +174,8 @@ class Iter_trainer(object):
                 # first token: choose beam_size from only vocab_size, initiate prefix
                 tmp_source = samples["source"]
                 tmp_prefix = torch.zeros([batch_size, 1], dtype=torch.long).to(device)
-                tmp_prefix[:, 0].fill_(model.dictionary.bos())
-                logits = model.logits(tmp_source, tmp_prefix).squeeze()
+                tmp_prefix[:, 0].fill_(model.module.dictionary.bos())
+                logits = model.module.logits(tmp_source, tmp_prefix).squeeze()
                 logits = F.log_softmax(logits, dim=-1)
                 
                 argsort = torch.argsort(logits, dim=-1, descending=True)[:, :beam_size]
@@ -187,7 +187,7 @@ class Iter_trainer(object):
                     tmp_lprob = lprob.unsqueeze(dim=-1).repeat(1, 1, beam_size)      
                     tmp_clen = clen.unsqueeze(dim=-1).repeat(1, 1, beam_size)
                     bb = batch_size * beam_size
-                    all_logits = model.logits(source.view(bb, -1), prefix.view(bb, -1)).view(batch_size, beam_size, max_len, -1)
+                    all_logits = model.module.logits(source.view(bb, -1), prefix.view(bb, -1)).view(batch_size, beam_size, max_len, -1)
                     logits = torch.gather(input=all_logits, dim=2, index=clen.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, vocab_size)).squeeze(2)
                     logits = F.log_softmax(logits, dim=-1)
 
