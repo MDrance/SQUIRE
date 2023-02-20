@@ -55,13 +55,13 @@ def evaluate(model, dataloader, device, args, true_triples=None, valid_triples=N
     max_len = 2 * args.max_len + 1
     restricted_punish = -30
     mrr, hit, hit1, hit3, hit10, count = (0, 0, 0, 0, 0, 0)
-    vocab_size = len(model.dictionary)
-    eos = model.dictionary.eos()
-    bos = model.dictionary.bos()
+    vocab_size = len(model.module.dictionary)
+    eos = model.module.dictionary.eos()
+    bos = model.module.dictionary.bos()
     rev_dict = dict()
     lines = []
-    for k in model.dictionary.indices.keys():
-        v = model.dictionary.indices[k]
+    for k in model.module.dictionary.indices.keys():
+        v = model.module.dictionary.indices[k]
         rev_dict[v] = k
     with tqdm(dataloader, desc="testing") as pbar:
         for samples in pbar:
@@ -71,14 +71,14 @@ def evaluate(model, dataloader, device, args, true_triples=None, valid_triples=N
             candidates_path = [dict() for i in range(batch_size)]
             source = samples["source"].unsqueeze(dim=1).repeat(1, beam_size, 1).to(device)
             prefix = torch.zeros([batch_size, beam_size, max_len], dtype=torch.long).to(device)
-            prefix[:, :, 0].fill_(model.dictionary.bos())
+            prefix[:, :, 0].fill_(model.module.dictionary.bos())
             lprob = torch.zeros([batch_size, beam_size]).to(device)
             clen = torch.zeros([batch_size, beam_size], dtype=torch.long).to(device)
             # first token: choose beam_size from only vocab_size, initiate prefix
             tmp_source = samples["source"]
             tmp_prefix = torch.zeros([batch_size, 1], dtype=torch.long).to(device)
-            tmp_prefix[:, 0].fill_(model.dictionary.bos())
-            logits = model.logits(tmp_source, tmp_prefix).squeeze()
+            tmp_prefix[:, 0].fill_(model.module.dictionary.bos())
+            logits = model.module.logits(tmp_source, tmp_prefix).squeeze()
             if args.no_filter_gen:
                 logits = F.log_softmax(logits, dim=-1)
             else:
@@ -103,7 +103,7 @@ def evaluate(model, dataloader, device, args, true_triples=None, valid_triples=N
                 tmp_lprob = lprob.unsqueeze(dim=-1).repeat(1, 1, beam_size)    
                 tmp_clen = clen.unsqueeze(dim=-1).repeat(1, 1, beam_size)
                 bb = batch_size * beam_size
-                all_logits = model.logits(source.view(bb, -1), prefix.view(bb, -1)).view(batch_size, beam_size, max_len, -1)
+                all_logits = model.module.logits(source.view(bb, -1), prefix.view(bb, -1)).view(batch_size, beam_size, max_len, -1)
                 logits = torch.gather(input=all_logits, dim=2, index=clen.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, vocab_size)).squeeze(2)
                 # restrict to true_triples, compute index for true_triples
                 if args.no_filter_gen:
