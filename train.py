@@ -302,6 +302,7 @@ def train(args):
                     train_set.src_lines += src_lines
                     train_set.tgt_lines += tgt_lines
                     train_loader = DataLoader(train_set, batch_size=args.batch_size, collate_fn=train_set.collate_fn, shuffle=True)
+                    train_loader = accelerator.prepare(train_loader)
                 # new scheduler
                 step_num = len(train_loader) * curr_iter_epoch
                 warmup_steps = step_num / args.warmup
