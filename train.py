@@ -269,6 +269,7 @@ def train(args):
     warmup_steps = total_step_num / args.warmup
     scheduler = transformers.get_linear_schedule_with_warmup(optimizer, warmup_steps, total_step_num)
     
+    model, optimizer, train_loader, test_loader, scheduler = accelerator.prepare(model, optimizer, train_loader, test_loader, scheduler)
     # evaluate(model, test_loader, device, args, train_valid, eval_valid)
     if args.iter:
         iter_trainer = Iter_trainer(args.dataset, args.iter_batch_size, 32, 4)
@@ -290,7 +291,6 @@ def train(args):
                     )
     steps = 0
     for epoch in range(args.num_epoch):
-        model, optimizer, train_loader, test_loader, scheduler = accelerator.prepare(model, optimizer, train_loader, test_loader, scheduler)
         if args.iter:
             if curr_iter_epoch == 0: # start next iteration
                 curr_iter += 1
