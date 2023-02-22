@@ -330,11 +330,14 @@ def train(args):
                 % (epoch + 1, args.num_epoch, np.mean(losses))
                 )
         if (epoch % args.save_interval == 0 and epoch != 0) or (epoch == args.num_epoch - 1):
-            torch.save(model.state_dict(), ckpt_path + "/ckpt_{}.pt".format(epoch + 1))
+            accelerator.wait_for_everyone()
+            unwrapped_model = accelerator.unwrap_model(model)
+            accelerator.save(unwrapped_model.state_dict(), ckpt_path + "/ckpt_{}.pt".format(epoch + 1))
             with torch.no_grad():
                 evaluate(model, test_loader, device, args, train_valid, eval_valid)
 
 def checkpoint(args):
+    accelerator = Accelerator()
     args.dataset = os.path.join('data', args.dataset)
     save_path = os.path.join('models_new', args.save_dir)
     ckpt_path = os.path.join(save_path, 'checkpoint')
@@ -347,7 +350,7 @@ def checkpoint(args):
                     format=
                     '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s'
                     )
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = accelerator.device if torch.cuda.is_available() else "cpu"
     train_set = Seq2SeqDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, args=args)
     test_set = TestDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, src_file="test_triples.txt")
     test_loader = DataLoader(test_set, batch_size=args.test_batch_size, collate_fn=test_set.collate_fn, shuffle=True)
@@ -355,7 +358,7 @@ def checkpoint(args):
     model = TransformerModel(args, train_set.dictionary)
     model.load_state_dict(torch.load(os.path.join(ckpt_path, args.ckpt)))
     model.args = args
-    model = model.to(device)
+    model, test_loader = accelerator.prepare(model, test_loader)
     with torch.no_grad():
         evaluate(model, test_loader, device, args, train_valid, eval_valid)
     
