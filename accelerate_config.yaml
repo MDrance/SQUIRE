@@ -10,4 +10,4 @@ mixed_precision: fp16
 num_machines: 1
 num_processes: 2
 use_cpu: false
-gpu_ids: 2,3
+gpu_ids: 1,2
