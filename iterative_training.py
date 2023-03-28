@@ -162,7 +162,7 @@ class Iter_trainer(object):
             index = model.module.dictionary.indices[name]
             rev_dict[index] = name
 
-        with tqdm(train_loader, desc="iterating") as pbar:
+        with tqdm(train_loader, desc="iterating", mininterval=300) as pbar:
             for samples in pbar:
                 batch_size = samples["source"].size(0)
                 candidate_path = [list() for i in range(batch_size)]
