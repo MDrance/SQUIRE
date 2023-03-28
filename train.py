@@ -65,7 +65,7 @@ def evaluate(model, dataloader, device, args, true_triples=None, valid_triples=N
         rev_dict[v] = k
     with tqdm(dataloader, desc="testing") as pbar:
         for samples in pbar:
-            pbar.set_description("MRR: %f, Hit@1: %f, Hit@3: %f, Hit@10: %f" % (mrr/max(1, count), hit1/max(1, count), hit3/max(1, count), hit10/max(1, count)))
+            # pbar.set_description("MRR: %f, Hit@1: %f, Hit@3: %f, Hit@10: %f" % (mrr/max(1, count), hit1/max(1, count), hit3/max(1, count), hit10/max(1, count)))
             batch_size = samples["source"].size(0)
             candidates = [dict() for i in range(batch_size)]
             candidates_path = [dict() for i in range(batch_size)]
@@ -324,7 +324,7 @@ def train(args):
                 scheduler.step()
                 steps += 1
                 losses.append(loss.item())
-                pbar.set_description("Epoch: %d, Loss: %0.8f, lr: %0.6f" % (epoch + 1, np.mean(losses), optimizer.param_groups[0]['lr']))
+                # pbar.set_description("Epoch: %d, Loss: %0.8f, lr: %0.6f" % (epoch + 1, np.mean(losses), optimizer.param_groups[0]['lr']))
         logging.info(
                 "[Epoch %d/%d] [train loss: %f]"
                 % (epoch + 1, args.num_epoch, np.mean(losses))
