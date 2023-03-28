@@ -63,7 +63,7 @@ def evaluate(model, dataloader, device, args, true_triples=None, valid_triples=N
     for k in model.module.dictionary.indices.keys():
         v = model.module.dictionary.indices[k]
         rev_dict[v] = k
-    with tqdm(dataloader, desc="testing", disable=True) as pbar:
+    with tqdm(dataloader, desc="testing", mininterval=300) as pbar:
         for samples in pbar:
             pbar.set_description("MRR: %f, Hit@1: %f, Hit@3: %f, Hit@10: %f" % (mrr/max(1, count), hit1/max(1, count), hit3/max(1, count), hit10/max(1, count)))
             batch_size = samples["source"].size(0)
@@ -313,7 +313,7 @@ def train(args):
             curr_iter_epoch -= 1
 
         model.train()
-        with tqdm(train_loader, desc="training", disable=True) as pbar:
+        with tqdm(train_loader, desc="training", mininterval=300) as pbar:
             losses = []
             for samples in pbar:
                 optimizer.zero_grad()
