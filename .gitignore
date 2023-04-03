@@ -3,8 +3,9 @@ models/
 *.out
 *.env
 AnyBURL/path1/
-data/*/
-!data/*/test.txt
-!data/*/valid.txt
-!data/*/train.txt
+data/*/*2id.txt
+data/*/in*
+data/*/out*
+data/*/*.dict
+data/*/*_triples*.txt
 test.py
