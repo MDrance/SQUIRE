@@ -51,6 +51,10 @@ def get_args():
 
 def evaluate(model, dataloader, device, args, true_triples=None, valid_triples=None):
     model.eval()
+    if len(args.test_relation) == 0:
+        logging.info("Testing on all relations.")
+    else:
+        logging.info("Testing on relation: {}".format(args.test_relation))
     beam_size = args.beam_size
     l_punish = args.l_punish
     max_len = 2 * args.max_len + 1
