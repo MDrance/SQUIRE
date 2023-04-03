@@ -29,6 +29,7 @@ def get_args():
     parser.add_argument("--save-dir", default="model_1")
     parser.add_argument("--ckpt", default="ckpt_30.pt")
     parser.add_argument("--dataset", default="FB15K237")
+    parser.add_argument("--test_relation", default="")
     parser.add_argument("--label-smooth", default=0.5, type=float)
     parser.add_argument("--l-punish", default=False, action="store_true") # during generation, add punishment for length
     parser.add_argument("--beam-size", default=128, type=int) # during generation, beam size
