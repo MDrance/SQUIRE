@@ -34,6 +34,7 @@ class Seq2SeqDataset(Dataset):
         self.len_vocab = len(self.dictionary)
         self.smart_filter = args.smart_filter
         self.args = args
+        self.test_relation = "" if len(args.test_relation) == 0 else str(args.test_relation + "_")
     
     def __len__(self):
         return len(self.src_lines)
@@ -181,7 +182,7 @@ class Seq2SeqDataset(Dataset):
                     eval_valid[er][tid] = 0
                 else:
                     eval_valid[er].append(tid)
-        with open(self.data_path+'test_triples_rev.txt', 'r') as f:
+        with open(self.data_path + self.test_relation + 'test_triples_rev.txt', 'r') as f:
             for line in tqdm(f):
                 h, r, t = line.strip().split('\t')
                 hid = self.dictionary.indices[h]

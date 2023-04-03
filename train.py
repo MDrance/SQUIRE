@@ -29,6 +29,7 @@ def get_args():
     parser.add_argument("--save-dir", default="model_1")
     parser.add_argument("--ckpt", default="ckpt_30.pt")
     parser.add_argument("--dataset", default="FB15K237")
+    parser.add_argument("--test_relation", default="")
     parser.add_argument("--label-smooth", default=0.5, type=float)
     parser.add_argument("--l-punish", default=False, action="store_true") # during generation, add punishment for length
     parser.add_argument("--beam-size", default=128, type=int) # during generation, beam size
@@ -341,6 +342,7 @@ def checkpoint(args):
     args.dataset = os.path.join('data', args.dataset)
     save_path = os.path.join('models_new', args.save_dir)
     ckpt_path = os.path.join(save_path, 'checkpoint')
+    src_file = "test_triples.txt" if len(args.test_relation) == 0 else str(args.test_relation + "_test_triples.txt")
     if not os.path.exists(ckpt_path):
         print("Invalid path!")
         return
@@ -352,7 +354,7 @@ def checkpoint(args):
                     )
     device = accelerator.device if torch.cuda.is_available() else "cpu"
     train_set = Seq2SeqDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, args=args)
-    test_set = TestDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, src_file="test_triples.txt")
+    test_set = TestDataset(data_path=args.dataset+"/", vocab_file=args.dataset+"/vocab.txt", device=device, src_file=src_file)
     test_loader = DataLoader(test_set, batch_size=args.test_batch_size, collate_fn=test_set.collate_fn, shuffle=True)
     train_valid, eval_valid = train_set.get_next_valid()
     model = TransformerModel(args, train_set.dictionary)
