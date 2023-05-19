@@ -242,7 +242,7 @@ def evaluate(model, dataloader, device, args, true_triples=None, valid_triples=N
 def train(args):
     accelerator = Accelerator()
     args.dataset = os.path.join('data', args.dataset)
-    save_path = os.path.join('models_new', args.save_dir)
+    save_path = os.path.join('models_new', args.dataset)
     ckpt_path = os.path.join(save_path, 'checkpoint')
     if not os.path.exists(save_path):
         os.mkdir(save_path)
