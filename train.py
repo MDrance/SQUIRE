@@ -345,7 +345,7 @@ def train(args):
 def checkpoint(args):
     accelerator = Accelerator()
     args.dataset = os.path.join('data', args.dataset)
-    save_path = os.path.join('models_new', args.save_dir)
+    save_path = os.path.join('models_new', args.dataset)
     ckpt_path = os.path.join(save_path, 'checkpoint')
     src_file = "test_triples.txt" if len(args.test_relation) == 0 else str(args.test_relation + "_test_triples.txt")
     if not os.path.exists(ckpt_path):
