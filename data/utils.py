@@ -4,6 +4,7 @@ import random
 from random import sample
 from tqdm import tqdm
 import argparse
+import multiprocessing as mp
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -15,6 +16,7 @@ def get_args():
     parser.add_argument("--gen-mapping", default=False, action="store_true") # generate mapping files: entity2id, relation2id
     parser.add_argument("--gen-eval-data", default=False, action="store_true") # generate files for evaluation
     parser.add_argument("--gen-train-data", default=False, action="store_true") # generate files for train (sample path)
+    parser.add_argument("--cpu", default=4, type=int) # Nbr of CPU to use to speed up gneration of in and out file
     args = parser.parse_args()
     return args
 
@@ -227,94 +229,6 @@ def write_path(start, edge, paths, in_line, out_line, rel_num, rev):
                 line += ('R'+str(inv(path[2*i-1], rel_num, rev))+' '+str(path[2*i])+'\n')
         out_line.append(line)
 
-def gen_train(train_triples, relation2id, args):
-    """
-    Generate in_ and out_ files.
-    in_file correspond to the request (h, r)
-    out_file correspond to the n possible paths from h to t that implies r
-
-    Parameters
-    ----------
-    train_triples : list
-        triples in form of mapped triples [(), (),...]
-    relation2id : dict
-        mapping between rel and their ID
-    """
-    print("-------generating training files-------")
-    rel_num = len(relation2id)
-    all_true_triples = train_triples
-    all_reverse_triples = []
-    connected = dict() # {start: {end1: [edge11, edge12, ...], end2: [edge21, edge22, ...], ...}, ...}, keep track of relation between to nodes
-    adjacent = dict() # {start: {edge1: [end11, end12, ...]}, edge2: [end21, end22, ...], ...}, ...}, keep track of nodes linked to h by a relation
-    for triple in all_true_triples:
-        all_reverse_triples.append((triple[2], triple[1] + rel_num, triple[0]))
-    all_triples = all_reverse_triples + all_true_triples
-    for triple in all_triples:
-        start = triple[0]
-        end = triple[2]
-        edge = triple[1]
-        if start not in connected:
-            connected[start] = dict()
-        if start not in adjacent:
-            adjacent[start] = dict()
-        if end not in connected[start]:
-            connected[start][end] = []
-        if edge not in adjacent[start]:
-            adjacent[start][edge] = []
-        connected[start][end].append(edge)
-        adjacent[start][edge].append(end)
-
-    in_line = []
-    out_line = []
-    if args.rule:
-        with open(os.path.join(args.dataset, 'rules.dict')) as f:
-            rel2rules = json.load(f)
-    for triple in tqdm(all_true_triples):
-        num = 0
-        start = triple[0]
-        end = triple[2]
-        edge = triple[1]
-        paths = list()
-        if args.rule:
-            adjacent[start][edge].remove(end)
-            num, paths = gen_path_from_rule(adjacent, rel2rules, triple, args.num)
-            adjacent[start][edge].append(end)
-        num = args.num - num
-        # find all paths of max_len in remaining graph if not enough paths were found using mined rules
-        if num > 0:
-            connected[start][end].remove(edge)
-            # len2paths = search_path(connected, start, end, args.max_len)
-            len2paths = find_path(connected, start, end, args.max_len)
-            connected[start][end].append(edge)
-            # print(len2paths)
-            N = 0
-            #print(len2paths)
-            for pathss in len2paths:
-                if len(pathss) > 0:
-                    N += 1
-            if N == 0: # no path
-                # print("no")
-                for n in range(num):
-                    in_line.append(str(start)+' '+'R'+str(edge)+'\n')
-                    out_line.append('R'+str(edge)+' '+str(end)+'\n')
-                for n in range(num):
-                    in_line.append(str(end)+' '+'R'+str(edge+rel_num)+'\n')
-                    out_line.append('R'+str(edge+rel_num)+' '+str(start)+'\n')
-            paths1 = paths + sample_path(len2paths, num)
-            paths2 = paths + sample_path(len2paths, num)
-        else:
-            paths1 = paths
-            paths2 = paths
-        #print(paths1)
-        write_path(start, edge, paths1, in_line, out_line, rel_num, rev=False)
-        write_path(end, edge, paths2, in_line, out_line, rel_num, rev=True)
-
-    with open(os.path.join(args.dataset, 'in_'+args.out+'.txt'), 'w') as f:
-        f.writelines(in_line)
-    with open(os.path.join(args.dataset, 'out_'+args.out+'.txt'), 'w') as f:
-        f.writelines(out_line)
-    print("-------finish training files-------")
-
 def find_path(connected, start, end, max_len=3):
     paths = []
     if start not in connected:
@@ -409,6 +323,133 @@ def search_path(connected, start, end, max_len):
                             candidate_paths.append(path + [edge, suc])
     return paths
 
+def gen_train(train_triples, relation2id, q_in, q_out, args):
+    """
+    Generate in_ and out_ files.
+    in_file correspond to the request (h, r)
+    out_file correspond to the n possible paths from h to t that implies r
+
+    Parameters
+    ----------
+    train_triples : list
+        triples in form of mapped triples [(), (),...]
+    relation2id : dict
+        mapping between rel and their ID
+    """
+    print("-------generating training files-------")
+    rel_num = len(relation2id)
+    all_true_triples = train_triples
+    all_reverse_triples = []
+    connected = dict() # {start: {end1: [edge11, edge12, ...], end2: [edge21, edge22, ...], ...}, ...}, keep track of relation between to nodes
+    adjacent = dict() # {start: {edge1: [end11, end12, ...]}, edge2: [end21, end22, ...], ...}, ...}, keep track of nodes linked to h by a relation
+    for triple in all_true_triples:
+        all_reverse_triples.append((triple[2], triple[1] + rel_num, triple[0]))
+    all_triples = all_reverse_triples + all_true_triples
+    for triple in all_triples:
+        start = triple[0]
+        end = triple[2]
+        edge = triple[1]
+        if start not in connected:
+            connected[start] = dict()
+        if start not in adjacent:
+            adjacent[start] = dict()
+        if end not in connected[start]:
+            connected[start][end] = []
+        if edge not in adjacent[start]:
+            adjacent[start][edge] = []
+        connected[start][end].append(edge)
+        adjacent[start][edge].append(end)
+
+    in_line = []
+    out_line = []
+    if args.rule:
+        with open(os.path.join(args.dataset, 'rules.dict')) as f:
+            rel2rules = json.load(f)
+    for triple in tqdm(all_true_triples):
+        num = 0
+        start = triple[0]
+        end = triple[2]
+        edge = triple[1]
+        paths = list()
+        if args.rule:
+            adjacent[start][edge].remove(end)
+            num, paths = gen_path_from_rule(adjacent, rel2rules, triple, args.num)
+            adjacent[start][edge].append(end)
+        num = args.num - num
+        # find all paths of max_len in remaining graph if not enough paths were found using mined rules
+        if num > 0:
+            connected[start][end].remove(edge)
+            # len2paths = search_path(connected, start, end, args.max_len)
+            len2paths = find_path(connected, start, end, args.max_len)
+            connected[start][end].append(edge)
+            # print(len2paths)
+            N = 0
+            #print(len2paths)
+            for pathss in len2paths:
+                if len(pathss) > 0:
+                    N += 1
+            if N == 0: # no path
+                # print("no")
+                for n in range(num):
+                    in_line.append(str(start)+' '+'R'+str(edge)+'\n')
+                    out_line.append('R'+str(edge)+' '+str(end)+'\n')
+                for n in range(num):
+                    in_line.append(str(end)+' '+'R'+str(edge+rel_num)+'\n')
+                    out_line.append('R'+str(edge+rel_num)+' '+str(start)+'\n')
+            paths1 = paths + sample_path(len2paths, num)
+            paths2 = paths + sample_path(len2paths, num)
+        else:
+            paths1 = paths
+            paths2 = paths
+        #print(paths1)
+        write_path(start, edge, paths1, in_line, out_line, rel_num, rev=False)
+        write_path(end, edge, paths2, in_line, out_line, rel_num, rev=True)
+    q_in.put(in_line)
+    q_out.put(out_line)
+
+def listener(q_in, q_out, args):
+    with open(os.path.join(args.dataset, 'in_'+args.out+'.txt'), 'w') as f:
+        while True:
+            m = q_in.get()
+            if m == "#done#":
+                break
+            for i in m:
+                f.write(i)
+            f.flush()
+    with open(os.path.join(args.dataset, 'out_'+args.out+'.txt'), 'w') as f:
+        while True:
+            m = q_out.get()
+            if m == "#done#":
+                break
+            for i in m:
+                f.write(i)
+            f.flush()
+
+def gen_train_parallel_with_IO(triples, relation2id, num_processes, args):
+    manager = mp.Manager()
+    q_in = manager.Queue()
+    q_out = manager.Queue()
+    pool = mp.Pool(num_processes+1)
+    watcher = pool.apply_async(listener, (q_in, q_out, args))
+
+    chunk_size = len(triples) // num_processes
+    results = []
+    for i in range(num_processes):
+        start = i * chunk_size
+        end = start + chunk_size if i < num_processes - 1 else None
+        chunk = triples[start:end]
+
+        result = pool.apply_async(gen_train, (chunk, relation2id, q_in, q_out, args))
+        results.append(result)
+
+    # Wait for all processes to complete
+    for result in results:
+        result.get()
+
+    q_in.put("#done#")
+    q_out.put("#done#")
+    pool.close()
+    pool.join()
 
 if __name__ == "__main__":
     random.seed(12345)
@@ -436,4 +477,5 @@ if __name__ == "__main__":
         gen_eval(train_triples, valid_triples, test_triples, relation2id)
     # generate train data files
     if args.gen_train_data:
-        gen_train(train_triples, relation2id, args)
+        # gen_train(train_triples, relation2id, args)
+        gen_train_parallel_with_IO(train_triples, relation2id, args.cpu, args)
