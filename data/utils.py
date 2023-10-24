@@ -17,7 +17,7 @@ def get_args():
     parser.add_argument("--gen-eval-data", default=False, action="store_true") # generate files for evaluation
     parser.add_argument("--gen-train-data", default=False, action="store_true") # generate files for train (sample path)
     parser.add_argument("--cpu", default=4, type=int) # Nbr of CPU to use to speed up gneration of in and out file
-    parser.add_argument("--rel_type", default="", type=int) #Relation to use if we want to only sample paths for this relation
+    parser.add_argument("--rel_type", default=None, type=int) #Relation to use if we want to only sample paths for this relation
     args = parser.parse_args()
     return args
 
@@ -230,9 +230,7 @@ def write_path(start, edge, paths, in_line, out_line, rel_num, rev):
                 line += ('R'+str(inv(path[2*i-1], rel_num, rev))+' '+str(path[2*i])+'\n')
         out_line.append(line)
 
-def find_path(connected, start, rel, end, max_len=3):
-    if rel != args.rel_type:
-        return [[]]
+def find_path(connected, start, end, max_len=3):
     paths = []
     if start not in connected:
         return [[]]
@@ -374,6 +372,9 @@ def gen_train(train_triples, relation2id, q_in, q_out, args):
         end = triple[2]
         edge = triple[1]
         paths = list()
+        if args.rel_type != None:
+            if edge != args.rel_type:
+                continue
         if args.rule:
             adjacent[start][edge].remove(end)
             num, paths = gen_path_from_rule(adjacent, rel2rules, triple, args.num)
@@ -383,7 +384,7 @@ def gen_train(train_triples, relation2id, q_in, q_out, args):
         if num > 0:
             connected[start][end].remove(edge)
             # len2paths = search_path(connected, start, end, args.max_len)
-            len2paths = find_path(connected, start, edge, end, args.max_len)
+            len2paths = find_path(connected, start, end, args.max_len)
             connected[start][end].append(edge)
             # print(len2paths)
             N = 0
