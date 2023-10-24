@@ -17,6 +17,7 @@ def get_args():
     parser.add_argument("--gen-eval-data", default=False, action="store_true") # generate files for evaluation
     parser.add_argument("--gen-train-data", default=False, action="store_true") # generate files for train (sample path)
     parser.add_argument("--cpu", default=4, type=int) # Nbr of CPU to use to speed up gneration of in and out file
+    parser.add_argument("--rel_type", default="", type=int) #Relation to use if we want to only sample paths for this relation
     args = parser.parse_args()
     return args
 
@@ -229,7 +230,9 @@ def write_path(start, edge, paths, in_line, out_line, rel_num, rev):
                 line += ('R'+str(inv(path[2*i-1], rel_num, rev))+' '+str(path[2*i])+'\n')
         out_line.append(line)
 
-def find_path(connected, start, end, max_len=3):
+def find_path(connected, start, rel, end, max_len=3):
+    if rel != args.rel_type:
+        return [[]]
     paths = []
     if start not in connected:
         return [[]]
@@ -340,7 +343,7 @@ def gen_train(train_triples, relation2id, q_in, q_out, args):
     rel_num = len(relation2id)
     all_true_triples = train_triples
     all_reverse_triples = []
-    connected = dict() # {start: {end1: [edge11, edge12, ...], end2: [edge21, edge22, ...], ...}, ...}, keep track of relation between to nodes
+    connected = dict() # {start: {end1: [edge11, edge12, ...], end2: [edge21, edge22, ...], ...}, ...}, keep track of relation between two nodes
     adjacent = dict() # {start: {edge1: [end11, end12, ...]}, edge2: [end21, end22, ...], ...}, ...}, keep track of nodes linked to h by a relation
     for triple in all_true_triples:
         all_reverse_triples.append((triple[2], triple[1] + rel_num, triple[0]))
@@ -380,7 +383,7 @@ def gen_train(train_triples, relation2id, q_in, q_out, args):
         if num > 0:
             connected[start][end].remove(edge)
             # len2paths = search_path(connected, start, end, args.max_len)
-            len2paths = find_path(connected, start, end, args.max_len)
+            len2paths = find_path(connected, start, edge, end, args.max_len)
             connected[start][end].append(edge)
             # print(len2paths)
             N = 0

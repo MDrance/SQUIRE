@@ -342,6 +342,7 @@ def train(args):
             accelerator.save(unwrapped_model.state_dict(), ckpt_path + "/ckpt_{}.pt".format(epoch + 1))
             with torch.no_grad():
                 evaluate(model, test_loader, device, args, train_valid, eval_valid)
+                accelerator.wait_for_everyone()
 
 def checkpoint(args):
     accelerator = Accelerator()
