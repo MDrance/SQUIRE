@@ -299,6 +299,36 @@ def find_path(connected, start, end, max_len=3):
                             for label1 in labels1:
                                 path4.append([start, label1, mid1, label2, mid2, label3, mid3, label4, end])
     paths.append(path4)
+    if max_len == 4:
+        return paths
+    #five-hops
+    path5 = []
+    for mid1 in connected[start]:
+        if mid1 == end or mid1 == start:
+            continue
+        for mid2 in connected[mid1]:
+            if mid2 == end or mid2 == start or mid2 == mid1:
+                continue
+            for mid3 in connected[mid2]:
+                if mid3 == end or mid3 == start or mid3 == mid1 or mid3 == mid2:
+                    continue
+                for mid4 in connected[mid3]:
+                    if mid4 == end or mid4 == start or mid4 == mid1 or mid4 == mid2 or mid4 == mid3:
+                         continue
+                    if end not in connected[mid4]:
+                        continue
+                    labels1 = connected[start][mid1]
+                    labels2 = connected[mid1][mid2]
+                    labels3 = connected[mid2][mid3]
+                    labels4 = connected[mid3][mid4]
+                    labels5 = connected[mid4][end]
+                    for label5 in labels5:
+                        for label4 in labels4:
+                            for label3 in labels3:
+                                for label2 in labels2:
+                                    for label1 in labels1:
+                                        path5.append([start, label1, mid1, label2, mid2, label3, mid3, label4, mid4, label5, end])
+    paths.append(path5)
     return paths
 
 def search_path(connected, start, end, max_len):
